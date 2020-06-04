@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:title="Export"
+        android:id="@+id/export"
+        android:visible="false">
+    </item>
+    <item
+        android:title="App info"
+        android:id="@+id/appinfo">
+    </item>
+</menu>
