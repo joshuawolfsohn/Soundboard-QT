@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
+        android:title="Import"
+        android:id="@+id/soundimport">
+    </item>
+    <item
         android:title="Export"
-        android:id="@+id/export"
-        android:visible="false">
+        android:id="@+id/soundexport">
     </item>
     <item
         android:title="App info"
