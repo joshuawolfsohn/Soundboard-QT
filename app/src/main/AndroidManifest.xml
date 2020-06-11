@@ -5,7 +5,6 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
 
     <application
         android:allowBackup="true"
@@ -20,7 +19,7 @@
             android:enabled="true"
             android:exported="true"
             android:icon="@drawable/ic_start"
-            android:label="Soundboard"
+            android:label="Sound 1"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:ignore="Instantiatable">
             <intent-filter>
@@ -33,7 +32,7 @@
             android:enabled="true"
             android:exported="true"
             android:icon="@drawable/ic_start"
-            android:label="Soundboard"
+            android:label="Sound 2"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:ignore="Instantiatable">
             <intent-filter>
@@ -46,7 +45,7 @@
             android:enabled="true"
             android:exported="true"
             android:icon="@drawable/ic_start"
-            android:label="Soundboard"
+            android:label="Sound 3"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:ignore="Instantiatable">
             <intent-filter>
@@ -59,7 +58,7 @@
             android:enabled="true"
             android:exported="true"
             android:icon="@drawable/ic_start"
-            android:label="Soundboard"
+            android:label="Sound 4"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             tools:ignore="Instantiatable">
             <intent-filter>
