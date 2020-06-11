@@ -67,7 +67,7 @@
         </service>
 
         <activity android:name=".SoundboardTileConfig"
-            android:label="Soundboard Quick Tile Config"
+            android:label="Soundboard Button Config"
             android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />

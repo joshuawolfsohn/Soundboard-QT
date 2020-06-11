@@ -2,8 +2,10 @@ package com.jpwolfso.soundboardqt
 
 import android.content.Context
 import android.graphics.drawable.Icon
-import android.media.MediaPlayer
-import android.net.Uri
+import android.media.AudioAttributes
+import android.media.MediaMetadataRetriever
+import android.media.SoundPool
+import android.os.Handler
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.widget.Toast
@@ -14,54 +16,60 @@ open class SoundboardTileService() : TileService() {
     open lateinit var file: File
     open lateinit var myKey: String
     private lateinit var tile: Tile
-    private var mediaPlayer: MediaPlayer? = null
+    private var audioAttributes: AudioAttributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build()
+    private var soundPool: SoundPool? = SoundPool.Builder().setAudioAttributes(audioAttributes).setMaxStreams(1).build()
 
     override fun onStartListening() {
         super.onStartListening()
         tile = qsTile
-        tile.label = getSharedPreferences("buttons", Context.MODE_PRIVATE).getString(myKey, "Soundboard")
+
         when (file.exists()) {
-            true -> updateTile(tile, 3)
-            false -> updateTile(tile, 2)
+            false -> updateTile(tile, 0)
+            true -> updateTile(tile, 1)
         }
+
     }
 
     override fun onClick() {
         super.onClick()
 
-        when (file.exists()) {
-            true -> {
-                when (mediaPlayer) {
-                    null -> {
-                        mediaPlayer = MediaPlayer.create(this, Uri.fromFile(file))
-                        mediaPlayer!!.setOnCompletionListener { updateTile(tile, 1) }
+            when (file.exists()) {
+                true -> {
+                    soundPool!!.load(file.path, 1)
+                    updateTile(tile, 2)
+                    soundPool!!.setOnLoadCompleteListener { soundPool, sampleId, _ ->
+                        soundPool!!.play(sampleId, 1F, 1F, 1, 0, 1F)
                     }
-                }
 
-                when (mediaPlayer!!.isPlaying) {
-                    false -> {
-                        updateTile(tile, 0)
-                        mediaPlayer!!.start()
-                    }
-                    true -> updateTile(tile, 1)
+                    var mediaMetadataRetriever = MediaMetadataRetriever()
+                    mediaMetadataRetriever!!.setDataSource(file.path)
+                    var length: Long = mediaMetadataRetriever!!.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
+                    Handler().postDelayed({
+                        updateTile(tile, 1)
+                        soundPool!!.release()
+                    }, length)
+
+
+                }
+                false -> {
+                    updateTile(tile, 0)
+                    Toast.makeText(this, "Please click and hold on the Soundboard tile to configure", Toast.LENGTH_LONG).show()
                 }
             }
-            false -> {
-                updateTile(tile, 2)
-                Toast.makeText(this, "Please click and hold on the Soundboard tile to configure", Toast.LENGTH_LONG).show()
-            }
-        }
     }
 
     private fun updateTile(tile: Tile, mode: Int) {
         when (mode) {
-            0 -> tile.icon = Icon.createWithResource(this, R.drawable.ic_stop) // when starting sound, set icon to stop
-            1 -> { tile.icon = Icon.createWithResource(this, R.drawable.ic_start)  // when stopping sound, set icon to start
-                    mediaPlayer!!.reset()
-                    mediaPlayer!!.release()
+            0 -> { tile.state = Tile.STATE_INACTIVE
+                tile.label = "Soundboard"
+            } // initial state, no button sound
+            1 -> { tile.icon = Icon.createWithResource(this, R.drawable.ic_start) // button sound is present and not currently playing
+                   tile.state = Tile.STATE_ACTIVE
+                   tile.label = getSharedPreferences("buttons", Context.MODE_PRIVATE).getString(myKey, "Soundboard")
             }
-            2 -> tile.state = Tile.STATE_INACTIVE // no sound file
-            3 -> tile.state = Tile.STATE_ACTIVE // sound file present
+            2 -> { tile.icon = Icon.createWithResource(this, R.drawable.ic_stop)  // button sound is present and currently playing
+                   tile.state = Tile.STATE_UNAVAILABLE
+            }
         }
         tile.updateTile()
     }
