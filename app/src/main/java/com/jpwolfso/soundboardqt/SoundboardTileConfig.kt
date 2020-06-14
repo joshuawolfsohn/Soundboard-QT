@@ -18,6 +18,9 @@ import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -42,7 +45,7 @@ class SoundboardTileConfig() : AppCompatActivity() {
     private lateinit var file: File
     private lateinit var sharedPreferences: SharedPreferences
     private lateinit var editor: Editor
-    private lateinit var buttonversion: String
+    private lateinit var saveas:View
 
     @SuppressLint("CommitPrefEdits")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,18 +68,28 @@ class SoundboardTileConfig() : AppCompatActivity() {
             override fun afterTextChanged(s: Editable) {}
         })
         saveButton = findViewById(R.id.saveButton)
-        saveButton.setOnClickListener(saveRecord)
+        saveButton.setOnClickListener {saveRecord()}
+
+        tempfile = File(filesDir, "temprecording")
+        sharedPreferences = getSharedPreferences("buttons", Context.MODE_PRIVATE)
+        editor = sharedPreferences.edit()
+
+        if (sharedPreferences.getBoolean("firstrun",true)) {
+            welcomeDialog()
+        }
+
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 0)
         }
 
-        val componentName = intent.getParcelableExtra<ComponentName>(Intent.EXTRA_COMPONENT_NAME)
-        buttonversion = componentName.shortClassName.substring(15)
-        file = File(filesDir, "recording$buttonversion")
-        tempfile = File(filesDir, "temprecording$buttonversion")
-        sharedPreferences = getSharedPreferences("buttons", Context.MODE_PRIVATE)
-        editor = sharedPreferences.edit()
+        reinitDlg()
     }
+
+    private fun welcomeDialog() = AlertDialog.Builder(context)
+            .setTitle("Welcome!")
+            .setMessage("To begin, please manually add the 4 sound buttons to your quick settings panel, then you can begin recording sounds!")
+            .setNeutralButton(R.string.OK) { dialog, which -> editor.putBoolean("firstrun",false).commit()}
+            .create().show()
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -90,19 +103,19 @@ class SoundboardTileConfig() : AppCompatActivity() {
             }
             PackageManager.PERMISSION_DENIED -> {
                 val dialog = AlertDialog.Builder(this)
-                        .setNegativeButton("Exit") { _, _ -> finish() }
+                        .setNegativeButton(getString(R.string.exit)) { _, _ -> finish() }
                         .setCancelable(false)
                 when (requestCode) {
                     0 -> {
-                        dialog.setMessage("Soundboard Quick Tile requires permission to record audio")
+                        dialog.setMessage(getString(R.string.message_permission_audio))
                                 .setPositiveButton("OK") { _, _ -> requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 0) }
                     }
                     1 -> {
-                        dialog.setMessage("Soundboard Quick Tile requires this permission to export this button sound to your device storage")
+                        dialog.setMessage(getString(R.string.message_permission_storage_export))
                                 .setPositiveButton("OK") { _, _ -> requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1) }
                     }
                     2 -> {
-                        dialog.setMessage("Soundboard Quick Tile requires this permission to import a sound from your device storage")
+                        dialog.setMessage(getString(R.string.message_permission_storage_import))
                                 .setPositiveButton("OK") { _, _ -> requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 2) }
                     }
                 }
@@ -113,12 +126,8 @@ class SoundboardTileConfig() : AppCompatActivity() {
     }
 
     private fun startRecord() {
-        if (file.exists()) {
-            file.delete()
-        }
-        editor.remove("button$buttonversion").commit()
         recordButton.setImageResource(R.drawable.ic_stop)
-        status.text = "Recording... Click to end recording"
+        status.text = getString(R.string.status_recording_in_progress)
         recordButton.setOnClickListener() {endRecord()}
         mediaRecorder = MediaRecorder()
         mediaRecorder!!.setAudioSource(MediaRecorder.AudioSource.MIC)
@@ -139,22 +148,53 @@ class SoundboardTileConfig() : AppCompatActivity() {
         mediaRecorder!!.release()
         mediaRecorder = null
         recordButton.setImageResource(R.drawable.ic_record)
-        status.text = "Enter a button title and click the Save button to save the quick tile, or click above to record again"
+        status.text = getString(R.string.status_recording_complete)
         recordButton.setOnClickListener() {startRecord()}
         saveButton.visibility = View.VISIBLE
         editText.visibility = View.VISIBLE
     }
 
-    var saveRecord = View.OnClickListener {
-        val buttonName = editText.text.toString()
-        editor.putString("button$buttonversion", buttonName).commit()
-        tempfile.renameTo(file)
-        Toast.makeText(context, "Button saved successfully", Toast.LENGTH_SHORT).show()
-        finish()
+    private fun reinitDlg() {
+        saveas = layoutInflater.inflate(R.layout.dialog_saveas,null)
+        saveas.findViewById<RadioButton>(R.id.radioButton1).text = sharedPreferences.getString("button1", R.string.sound_1.toString())
+        saveas.findViewById<RadioButton>(R.id.radioButton2).text = sharedPreferences.getString("button2", R.string.sound_2.toString())
+        saveas.findViewById<RadioButton>(R.id.radioButton3).text = sharedPreferences.getString("button3", R.string.sound_3.toString())
+        saveas.findViewById<RadioButton>(R.id.radioButton4).text = sharedPreferences.getString("button4", R.string.sound_4.toString())
     }
+
+    private fun saveRecord() = AlertDialog.Builder(context)
+            .setTitle(getString(R.string.title_select_button_write))
+            .setView(saveas)
+            .setOnDismissListener {reinitDlg()}
+            .setPositiveButton(getString(R.string.confirm)) { _, _->
+                val buttonName = editText.text.toString()
+                when (saveas.findViewById<RadioGroup>(R.id.radioGroup).checkedRadioButtonId) {
+                    R.id.radioButton1 -> {
+                        editor.putString("button1", buttonName).commit()
+                        file = File(filesDir, "recording1")
+                    }
+                    R.id.radioButton2 -> {
+                        editor.putString("button2", buttonName).commit()
+                        file = File(filesDir, "recording2")
+                    }
+                    R.id.radioButton3 -> {
+                        editor.putString("button3", buttonName).commit()
+                        file = File(filesDir, "recording3")
+                    }
+                    R.id.radioButton4 -> {
+                        editor.putString("button4", buttonName).commit()
+                        file = File(filesDir, "recording4")
+                    }
+                }
+                tempfile.renameTo(file)
+                Toast.makeText(context, getString(R.string.toast_button_saved_success), Toast.LENGTH_SHORT).show()
+                finish()
+            }
+            .create().show()
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_overflow, menu)
+
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -184,19 +224,26 @@ class SoundboardTileConfig() : AppCompatActivity() {
     }
 
     private fun exportDialog() = AlertDialog.Builder(context)
-            .setTitle("Please read")
-            .setMessage("On the following screen, please browse to the save location and verify the filename ends with the .m4a file extension.")
-            .setPositiveButton("Proceed") { _, _ ->
+            .setTitle(getString(R.string.title_select_button_export))
+            .setMessage(getString(R.string.message_export_help))
+            .setView(saveas)
+            .setOnDismissListener {reinitDlg()}
+            .setPositiveButton(getString(R.string.proceed)) { _, _ ->
+                when (saveas.findViewById<RadioGroup>(R.id.radioGroup).checkedRadioButtonId) {
+                    R.id.radioButton1 -> { file = File(filesDir, "recording1") }
+                    R.id.radioButton2 -> { file = File(filesDir, "recording2") }
+                    R.id.radioButton3 -> { file = File(filesDir, "recording3") }
+                    R.id.radioButton4 -> { file = File(filesDir, "recording4") }
+                }
                 val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
                 intent.type = "audio/*"
-                intent.putExtra(Intent.EXTRA_TITLE, getSharedPreferences("buttons", Context.MODE_PRIVATE).getString("button$buttonversion", "Button $buttonversion") + ".m4a")
                 startActivityForResult(intent, 1)
             }.create().show()
 
     private fun importDialog() = AlertDialog.Builder(context)
-            .setTitle("Please read")
-            .setMessage("On the following screen, please browse and open the file to import.")
-            .setPositiveButton("Proceed") { _, _ ->
+            .setTitle(getString(R.string.title_please_read))
+            .setMessage(getString(R.string.message_help_import))
+            .setPositiveButton(getString(R.string.proceed)) { _, _ ->
                 val intent = Intent(Intent.ACTION_GET_CONTENT)
                 intent.type = "audio/*"
                 startActivityForResult(intent, 0)
@@ -209,7 +256,7 @@ class SoundboardTileConfig() : AppCompatActivity() {
                 try {
                     val inputStream = contentResolver.openInputStream(data!!.data!!)
                     if (inputStream!!.available() >= 1000000) { // SoundPool does not work with files greater than 1 MB
-                        Toast.makeText(this,"Error: Imported file is too large",Toast.LENGTH_LONG).show()
+                        Toast.makeText(this,getString(R.string.toast_error_large_file),Toast.LENGTH_LONG).show()
                         return
                     }
                     FileOutputStream(tempfile).use { stream -> inputStream.copyTo(stream)}
@@ -217,20 +264,20 @@ class SoundboardTileConfig() : AppCompatActivity() {
                     recordButton.visibility = View.GONE
                     editText.visibility = View.VISIBLE
                     saveButton.visibility = View.VISIBLE
-                    status.text = "Enter a button title and click the Save button to finish importing the selected file"
+                    status.text = getString(R.string.status_import_recording)
                 } catch (e: IOException) {
                     e.printStackTrace()
-                    Toast.makeText(context, "Failed to import button sound :(", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, getString(R.string.toast_error_import_failed), Toast.LENGTH_SHORT).show()
                 }
             } else if (requestCode == 1) {
                 try {
                     val outputStream = contentResolver.openOutputStream(data!!.data!!)
                     FileInputStream(file).use { stream -> stream.copyTo(outputStream!!)}
                     outputStream!!.close()
-                    Toast.makeText(context, "Button sound exported successfully", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, getString(R.string.toast_export_success), Toast.LENGTH_SHORT).show()
                 } catch (e: IOException) {
                     e.printStackTrace()
-                    Toast.makeText(context, "Failed to export button sound :(", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, getString(R.string.toast_export_failed), Toast.LENGTH_SHORT).show()
                 }
             }
         }

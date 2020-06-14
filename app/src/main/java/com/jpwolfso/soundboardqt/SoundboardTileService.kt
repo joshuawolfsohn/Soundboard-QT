@@ -46,26 +46,25 @@ open class SoundboardTileService() : TileService() {
                     var length: Long = mediaMetadataRetriever!!.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
                     Handler().postDelayed({
                         updateTile(tile, 1)
-                        soundPool!!.release()
                     }, length)
 
 
                 }
                 false -> {
                     updateTile(tile, 0)
-                    Toast.makeText(this, "Please click and hold on the Soundboard tile to configure", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, getString(R.string.toast_tile_help), Toast.LENGTH_LONG).show()
                 }
             }
     }
 
     private fun updateTile(tile: Tile, mode: Int) {
         when (mode) {
-            0 -> { tile.state = Tile.STATE_INACTIVE
-                tile.label = "Soundboard"
-            } // initial state, no button sound
+            0 -> { tile.state = Tile.STATE_INACTIVE // initial state, no button sound
+                tile.label = "Soundboard QT"
+            }
             1 -> { tile.icon = Icon.createWithResource(this, R.drawable.ic_start) // button sound is present and not currently playing
                    tile.state = Tile.STATE_ACTIVE
-                   tile.label = getSharedPreferences("buttons", Context.MODE_PRIVATE).getString(myKey, "Soundboard")
+                   tile.label = getSharedPreferences("buttons", Context.MODE_PRIVATE).getString(myKey, "")
             }
             2 -> { tile.icon = Icon.createWithResource(this, R.drawable.ic_stop)  // button sound is present and currently playing
                    tile.state = Tile.STATE_UNAVAILABLE
